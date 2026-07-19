@@ -15,6 +15,14 @@ async function upsertRows(table, rows) {
   return { ok: true, inserted: payload.length, table };
 }
 
+async function safeUpsertRows(results, table, rows) {
+  try {
+    results.push(await upsertRows(table, rows));
+  } catch (error) {
+    results.push({ ok: false, reason: error?.message || 'upsert_failed', table });
+  }
+}
+
 export async function seedSupabaseFromAppData() {
   const base = withDemoData(seedDB());
   const client = getSupabaseClient();
@@ -46,7 +54,7 @@ export async function seedSupabaseFromAppData() {
     },
   }));
 
-  results.push(await upsertRows('users', usersRows));
+  await safeUpsertRows(results, 'users', usersRows);
 
   const profilesRows = base.users
     .filter((u) => u.role === 'PSYCHOLOGIST' && u.profile)
@@ -64,7 +72,7 @@ export async function seedSupabaseFromAppData() {
       created_at: u.createdAt || null,
       updated_at: u.createdAt || null,
     }));
-  results.push(await upsertRows('psychologist_profiles', profilesRows));
+  await safeUpsertRows(results, 'psychologist_profiles', profilesRows);
 
   const testsRows = base.tests.map((t) => ({
     id: t.id,
@@ -85,7 +93,7 @@ export async function seedSupabaseFromAppData() {
       questions: t.questions || [],
     },
   }));
-  results.push(await upsertRows('tests', testsRows));
+  await safeUpsertRows(results, 'tests', testsRows);
 
   const questionRows = [];
   const optionRows = [];
@@ -124,9 +132,9 @@ export async function seedSupabaseFromAppData() {
       });
     });
   });
-  results.push(await upsertRows('questions', questionRows));
-  results.push(await upsertRows('question_options', optionRows));
-  results.push(await upsertRows('test_ranges', rangeRows));
+  await safeUpsertRows(results, 'questions', questionRows);
+  await safeUpsertRows(results, 'question_options', optionRows);
+  await safeUpsertRows(results, 'test_ranges', rangeRows);
 
   const attemptRows = base.attempts.map((attempt) => ({
     id: attempt.id,
@@ -147,7 +155,7 @@ export async function seedSupabaseFromAppData() {
     created_at: attempt.startedAt || null,
     updated_at: attempt.completedAt || attempt.startedAt || null,
   }));
-  results.push(await upsertRows('attempts', attemptRows));
+  await safeUpsertRows(results, 'attempts', attemptRows);
 
   const answerRows = [];
   base.attempts.forEach((attempt) => {
@@ -164,7 +172,7 @@ export async function seedSupabaseFromAppData() {
       });
     });
   });
-  results.push(await upsertRows('attempt_answers', answerRows));
+  await safeUpsertRows(results, 'attempt_answers', answerRows);
 
   const eventRows = (base.events || []).map((ev) => ({
     id: ev.id,
@@ -178,7 +186,11 @@ export async function seedSupabaseFromAppData() {
       original: ev,
     },
   }));
-  results.push(await upsertRows('events', eventRows));
+  await safeUpsertRows(results, 'events', eventRows);
 
+  const failedResults = results.filter((item) => item && item.ok === false);
+  if (failedResults.length) {
+    return { ok: false, reason: 'some_tables_unavailable', results };
+  }
   return { ok: true, results };
 }

@@ -36,7 +36,13 @@ export default function App() {
         d = withDemoData({ ...d, users: d.users || [], tests: d.tests || [], attempts: d.attempts || [], events: d.events || [] });
       }
       await saveDB(d);
-      const seeded = await seedSupabaseFromAppData();
+      let seeded = { ok: false, reason: 'seed_skipped' };
+      try {
+        seeded = await seedSupabaseFromAppData();
+      } catch (error) {
+        console.warn('[supabase] seed failed', error?.message || error);
+        seeded = { ok: false, reason: 'seed_failed', error: error?.message || String(error) };
+      }
       console.info('[supabase] seed', seeded);
       const s = await loadSession();
       dbRef.current = d;

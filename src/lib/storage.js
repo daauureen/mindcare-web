@@ -30,7 +30,7 @@ async function saveToSupabase(key, value) {
     if (error) throw error;
     return true;
   } catch (error) {
-    console.error('[supabase] save failed', error);
+    console.error('[supabase] save failed', error.message || error);
     return false;
   }
 }
@@ -44,7 +44,7 @@ async function readFromSupabase(key) {
     if (error) throw error;
     return data ? data.value : null;
   } catch (error) {
-    console.error('supabase load', error);
+    console.error('[supabase] load failed', error.message || error);
     return null;
   }
 }

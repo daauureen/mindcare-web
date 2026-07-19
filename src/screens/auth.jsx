@@ -168,13 +168,13 @@ export function LoginScreen({ go, login, err, setErr }) {
         {err && <p className="tiny" style={{ color: "var(--ochre)" }}>{err}</p>}
         <button className="btn" onClick={async () => setErr((await login(email, pw)) || "")}>Войти</button>
         <div className="divider" />
-        <div className="card tinted">
+        {/* <div className="card tinted">
           <div className="eyebrow">Демо-доступы</div>
           <p className="tiny" style={{ marginTop: 8 }}>
             Администратор — admin@mindcare.kz / admin123<br />
             Психолог (подтверждён) — aigerim@mindcare.kz / demo1234
           </p>
-        </div>
+        </div> */}
       </div>
     </>
   );

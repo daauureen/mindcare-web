@@ -24,12 +24,13 @@ async function saveToSupabase(key, value) {
   if (!client) return false;
   const table = getSupabaseTableName();
   try {
-    const payload = { key, value, updated_at: new Date().toISOString() };
+    const normalizedValue = value === null ? null : (typeof value === 'string' ? JSON.parse(value) : value);
+    const payload = { key, value: normalizedValue, updated_at: new Date().toISOString() };
     const { error } = await client.from(table).upsert(payload, { onConflict: 'key' });
     if (error) throw error;
     return true;
   } catch (error) {
-    console.error('supabase save', error);
+    console.error('[supabase] save failed', error);
     return false;
   }
 }
@@ -63,7 +64,7 @@ export async function saveDB(db) {
   const serialized = JSON.stringify(db);
   const localOk = write(DB_KEY, serialized);
   if (isSupabaseConfigured()) {
-    const remoteOk = await saveToSupabase(DB_KEY, serialized);
+    const remoteOk = await saveToSupabase(DB_KEY, db);
     return localOk || remoteOk;
   }
   return localOk;
@@ -85,7 +86,7 @@ export async function saveSession(session) {
   if (session) {
     const localOk = write(SESSION_KEY, serialized);
     if (isSupabaseConfigured()) {
-      const remoteOk = await saveToSupabase(SESSION_KEY, serialized);
+      const remoteOk = await saveToSupabase(SESSION_KEY, session);
       return localOk || remoteOk;
     }
     return localOk;

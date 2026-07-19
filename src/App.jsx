@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { loadDB, saveDB, saveSession } from './lib/storage.js';
+
+function clearStaleSession() {
+  try {
+    localStorage.removeItem('mindcare:session:v2');
+  } catch (error) {
+    console.warn('[storage] failed to clear session', error);
+  }
+}
 import { seedDB, withDemoData } from './lib/seed.js';
 import { probeSupabaseWrite } from './lib/supabase.js';
 import { seedSupabaseFromAppData } from './lib/supabaseSeed.js';
@@ -44,6 +52,7 @@ export default function App() {
         seeded = { ok: false, reason: 'seed_failed', error: error?.message || String(error) };
       }
       console.info('[supabase] seed', seeded);
+      clearStaleSession();
       dbRef.current = d;
       setDb(d);
       setSession(null);

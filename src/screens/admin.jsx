@@ -52,6 +52,10 @@ export function AdminApp({ me, refresh, db, commit, route, go, notify, logout })
     });
   };
 
+  const visibleUsers = (db.users || [])
+    .filter((u) => u && typeof u === 'object' && u.id && u.role !== 'ADMIN' && typeof u.email === 'string' && u.email.trim())
+    .filter((u, index, arr) => arr.findIndex((item) => item.id === u.id) === index);
+
   let content;
   if (route.n === "request") {
     const u = db.users.find((x) => x.id === route.id);
@@ -61,7 +65,8 @@ export function AdminApp({ me, refresh, db, commit, route, go, notify, logout })
       <>
         <Top title="Пользователи" />
         <div className="body stack">
-          {db.users.filter((u) => u.role !== "ADMIN").map((u) => (
+          {visibleUsers.length === 0 && <Empty title="Пользователей пока нет">Список обновится после регистрации аккаунтов.</Empty>}
+          {visibleUsers.map((u) => (
             <div key={u.id} className="card between">
               <div><h3>{u.fullName}</h3><p className="tiny" style={{ marginTop: 4 }}>{u.email} · {u.role === "STUDENT" ? "студент" : "психолог"}{u.status === "BLOCKED" ? " · заблокирован" : ""}</p></div>
               <button className="btn quiet sm" onClick={() => blockUser(u.id)}>{u.status === "ACTIVE" ? "Заблокировать" : "Снять блок"}</button>

@@ -40,9 +40,11 @@ async function readFromSupabase(key) {
   if (!client) return null;
   const table = getSupabaseTableName();
   try {
-    const { data, error } = await client.from(table).select('value').eq('key', key).maybeSingle();
+    const { data, error } = await client.from(table).select('*').eq('key', key).maybeSingle();
     if (error) throw error;
-    return data ? data.value : null;
+    if (!data) return null;
+    const remoteValue = data.value;
+    return remoteValue === undefined ? null : remoteValue;
   } catch (error) {
     console.error('[supabase] load failed', error.message || error);
     return null;
@@ -60,6 +62,7 @@ export async function loadDB() {
       try {
         const parsedRemote = typeof remote === 'string' ? JSON.parse(remote) : remote;
         if (parsedRemote && parsedRemote.users) return parsedRemote;
+        if (parsedRemote && Array.isArray(parsedRemote)) return parsedRemote;
       } catch { }
     }
   }

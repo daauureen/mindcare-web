@@ -44,3 +44,16 @@ export function getSupabaseClient() {
 export function getSupabaseTableName() {
   return (import.meta.env.VITE_SUPABASE_TABLE || 'app_state').trim() || 'app_state';
 }
+
+export async function probeSupabaseWrite() {
+  const client = getSupabaseClient();
+  if (!client) return { ok: false, reason: 'not_configured' };
+  const table = getSupabaseTableName();
+  try {
+    const { error } = await client.from(table).upsert({ key: '__probe__', value: { ok: true }, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    if (error) throw error;
+    return { ok: true, table };
+  } catch (error) {
+    return { ok: false, reason: error?.message || 'unknown', table };
+  }
+}

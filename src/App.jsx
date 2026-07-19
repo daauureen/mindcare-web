@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { loadDB, saveDB, loadSession, saveSession } from './lib/storage.js';
 import { seedDB, withDemoData } from './lib/seed.js';
+import { probeSupabaseWrite } from './lib/supabase.js';
+import { seedSupabaseFromAppData } from './lib/supabaseSeed.js';
 import { Auth, VerifyEmail } from './screens/auth.jsx';
 import { StudentApp } from './screens/student.jsx';
 import { PsychApp } from './screens/psychologist.jsx';
@@ -25,8 +27,15 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
+      const probe = await probeSupabaseWrite();
+      console.info('[supabase] probe', probe);
       let d = await loadDB();
-      if (!d) { d = withDemoData(seedDB()); await saveDB(d); }
+      if (!d) {
+        d = withDemoData(seedDB());
+        await saveDB(d);
+        const seeded = await seedSupabaseFromAppData();
+        console.info('[supabase] seed', seeded);
+      }
       const s = await loadSession();
       dbRef.current = d;
       setDb(d);

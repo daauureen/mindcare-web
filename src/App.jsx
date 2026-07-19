@@ -27,49 +27,35 @@ export default function App() {
   const dbRef = useRef(null);
 
   useEffect(() => {
-    (async () => {
-      const probe = await probeSupabaseWrite();
-      console.info('[supabase] probe', probe);
-      let d = await loadDB();
-      if (!d) {
-        d = withDemoData(seedDB());
-      } else {
-        d = withDemoData({ ...d, users: d.users || [], tests: d.tests || [], attempts: d.attempts || [], events: d.events || [] });
-      }
-      
-      // Инициализируем недостающие поля
-      d.chats = d.chats || {};
-      d.notifications = d.notifications || [];
-      d.audit = d.audit || [];
-      
-      await saveDB(d);
-      
-      let seeded = { ok: false, reason: 'seed_skipped' };
-      try {
-        seeded = await seedSupabaseFromAppData();
-      } catch (error) {
-        console.warn('[supabase] seed failed', error?.message || error);
-        seeded = { ok: false, reason: 'seed_failed', error: error?.message || String(error) };
-      }
-      console.info('[supabase] seed', seeded);
-      
-      // Восстанавливаем сессию
-      const savedSession = await loadSession();
-      console.info('[session] restored', savedSession);
-      
-      dbRef.current = d;
-      setDb(d);
-      setSession(savedSession); // <-- восстанавливаем сессию
-      setLoading(false);
-      
-      // Если есть сессия и пользователь, сразу на home
-      if (savedSession && savedSession.userId) {
-        setRoute({ n: 'home' });
-      } else {
-        setRoute({ n: 'welcome' });
-      }
-    })();
-  }, []);
+  (async () => {
+    const probe = await probeSupabaseWrite();
+    console.info('[supabase] probe', probe);
+    let d = await loadDB();
+    if (!d) {
+      d = withDemoData(seedDB());
+    } else {
+      d = withDemoData({ ...d, users: d.users || [], tests: d.tests || [], attempts: d.attempts || [], events: d.events || [] });
+    }
+    d.chats = d.chats || {};
+    d.notifications = d.notifications || [];
+    await saveDB(d);
+
+    let seeded = { ok: false, reason: 'seed_skipped' };
+    try {
+      seeded = await seedSupabaseFromAppData();
+    } catch (error) {
+      console.warn('[supabase] seed failed', error?.message || error);
+    }
+    console.info('[supabase] seed', seeded);
+
+    // Всегда начинаем с экрана входа
+    dbRef.current = d;
+    setDb(d);
+    setSession(null);
+    setLoading(false);
+    setRoute({ n: 'welcome' });
+  })();
+}, []);
 
   const commit = (next) => { dbRef.current = next; setDb(next); saveDB(next); };
   const notify = (m) => { setToast(m); setTimeout(() => setToast(''), 2600); };

@@ -1,17 +1,8 @@
-// Отправка email через EmailJS (прямой fetch, без npm-пакета)
-
 const PUBLIC_KEY = import.meta.env?.VITE_EMAILJS_PUBLIC_KEY;
 const SERVICE_ID = import.meta.env?.VITE_EMAILJS_SERVICE_ID;
 const TEMPLATE_ID = import.meta.env?.VITE_EMAILJS_TEMPLATE_ID;
 
-/**
- * Отправляет код подтверждения на почту.
- * @param {string} email — адрес получателя
- * @param {string} code — шестизначный код
- * @returns {Promise<boolean>} true если отправилось
- */
 export async function sendEmailCode(email, code) {
-  // Если ключи не настроены — просто логируем и возвращаем true для разработки
   if (!PUBLIC_KEY || !SERVICE_ID || !TEMPLATE_ID) {
     console.warn('[email] EmailJS не настроен. Код:', code, 'для', email);
     return true;
@@ -27,7 +18,9 @@ export async function sendEmailCode(email, code) {
         user_id: PUBLIC_KEY,
         accessToken: PUBLIC_KEY,
         template_params: {
+          email: email,
           to_email: email,
+          to_name: email.split('@')[0],
           code: code,
         },
       }),

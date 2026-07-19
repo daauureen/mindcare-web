@@ -271,12 +271,12 @@ export function TestEditor({ me, db, commit, testId, go, notify }) {
         {step === 1 && (
           <>
             <div className="eyebrow">Шаг 1 · о тесте</div>
-            <Field label="Название" value={t.title} onChange={set("title")} placeholder="Уровень тревоги перед сессией" />
+            <Field label="Название" value={t.title} onChange={set("title")} />
             <Area label="Описание для студента" value={t.description} onChange={set("description")} />
             <Select label="Категория" value={t.category} onChange={set("category")}>
               {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
             </Select>
-            <Area label="Инструкция" value={t.instruction} onChange={set("instruction")} placeholder="Как отвечать" />
+            <Area label="Инструкция" value={t.instruction} onChange={set("instruction")} />
             <Field label="Примерное время, мин" type="number" value={t.minutes} onChange={set("minutes")} />
             <button className="btn" onClick={() => setStep(2)}>Дальше · вопросы</button>
           </>
@@ -289,10 +289,10 @@ export function TestEditor({ me, db, commit, testId, go, notify }) {
               <div key={q.id} className="card stack">
                 <div className="between"><span className="eyebrow">Вопрос {qi + 1}</span>
                   <button className="link" onClick={() => setT({ ...t, questions: t.questions.filter((x) => x.id !== q.id) })}>Удалить</button></div>
-                <input value={q.text} onChange={(e) => updQ(q.id, { text: e.target.value })} placeholder="Текст вопроса" />
+                <input value={q.text} onChange={(e) => updQ(q.id, { text: e.target.value })} />
                 {q.options.map((o) => (
                   <div key={o.id} className="row">
-                    <input style={{ flex: 3 }} value={o.text} onChange={(e) => updOpt(q.id, o.id, { text: e.target.value })} placeholder="Вариант ответа" />
+                    <input style={{ flex: 3 }} value={o.text} onChange={(e) => updOpt(q.id, o.id, { text: e.target.value })} />
                     <input style={{ flex: 1 }} type="number" value={o.score} onChange={(e) => updOpt(q.id, o.id, { score: e.target.value })} />
                   </div>
                 ))}
@@ -317,9 +317,9 @@ export function TestEditor({ me, db, commit, testId, go, notify }) {
                   <label className="f" style={{ flex: 1 }}><span>от</span><input type="number" value={r.min} onChange={(e) => updRange(r.id, { min: e.target.value })} /></label>
                   <label className="f" style={{ flex: 1 }}><span>до</span><input type="number" value={r.max} onChange={(e) => updRange(r.id, { max: e.target.value })} /></label>
                 </div>
-                <input value={r.title} onChange={(e) => updRange(r.id, { title: e.target.value })} placeholder="Заголовок, напр. «Заметное напряжение»" />
-                <textarea value={r.text} onChange={(e) => updRange(r.id, { text: e.target.value })} placeholder="Текст результата" />
-                <textarea value={r.rec} onChange={(e) => updRange(r.id, { rec: e.target.value })} placeholder="Рекомендация (необязательно)" style={{ minHeight: 60 }} />
+                <input value={r.title} onChange={(e) => updRange(r.id, { title: e.target.value })} />
+                <textarea value={r.text} onChange={(e) => updRange(r.id, { text: e.target.value })} />
+                <textarea value={r.rec} onChange={(e) => updRange(r.id, { rec: e.target.value })} style={{ minHeight: 60 }} />
               </div>
             ))}
             <button className="btn ghost" onClick={addRange}>+ Диапазон</button>

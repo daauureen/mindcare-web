@@ -173,7 +173,7 @@ export function AdminRequest({ u, go, decide }) {
         {mode === "docs" && (
           <>
             <Area label="Что нужно догрузить (увидит психолог)" value={reason} onChange={(e) => setReason(e.target.value)}
-              placeholder="Диплом нечитаемый, загрузите разворот целиком" />
+              />
             <button className="btn" disabled={!reason.trim()} onClick={() => decide(u.id, "NEEDS_MORE_DOCS", reason)}>Отправить запрос</button>
             <button className="btn quiet" onClick={() => setMode(null)}>Отмена</button>
           </>

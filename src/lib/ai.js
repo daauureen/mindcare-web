@@ -35,7 +35,7 @@ export const AI_SYSTEM = `Ты — поддерживающий собеседн
    уходит на ваш бэкенд, а ключ остаётся на сервере.
    ========================================================================= */
 const KEY = import.meta.env?.VITE_GEMINI_API_KEY;
-const MODEL = import.meta.env?.VITE_GEMINI_MODEL || 'gemini-2.5-flash';
+const MODEL = import.meta.env?.VITE_GEMINI_MODEL || 'gemini-3-flash-preview';
 const ENDPOINT = (m) => `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
 
 /**
@@ -61,17 +61,50 @@ const SOFT_FALLBACK =
 const NO_KEY =
   'Чат пока не подключён. Добавьте VITE_GEMINI_API_KEY в файл .env и перезапустите dev-сервер.';
 
-/**
- * Google переводит ключи Gemini со старого формата (AIza...) на новый,
- * который называется Auth key и начинается с AQ. Авторизуются они по-разному:
- * старый передаётся как ключ API, новый — как bearer-токен. Если перепутать,
- * приходит 401 с жалобой на тип токена, и это выглядит как «неверный ключ»,
- * хотя ключ верный. Поэтому определяем формат по префиксу.
- */
-function authHeader(key) {
-  return key.startsWith('AQ.')
-    ? { Authorization: `Bearer ${key}` }
-    : { 'x-goog-api-key': key };
+/* -------------------------------------------------------------------------
+   Авторизация: перебор способов
+
+   Google переводит ключи Gemini со старого формата (AIza) на новый (AQ.),
+   и в переходный период разные способы авторизации ведут себя по-разному
+   в зависимости от типа ключа и проекта. Источники противоречат друг другу,
+   а цена ошибки — 401, неотличимый от неверного ключа.
+
+   Поэтому не угадываем, а пробуем по очереди и запоминаем сработавший
+   на время сессии. Три запроса в худшем случае вместо неработающего чата.
+   ------------------------------------------------------------------------- */
+const AUTH_METHODS = [
+  { name: 'header x-goog-api-key', build: (url, key) => ({ url, headers: { 'x-goog-api-key': key } }) },
+  { name: 'query ?key=', build: (url, key) => ({ url: `${url}?key=${encodeURIComponent(key)}`, headers: {} }) },
+  { name: 'Authorization: Bearer', build: (url, key) => ({ url, headers: { Authorization: `Bearer ${key}` } }) },
+];
+
+let working = null; // индекс способа, который уже сработал в этой сессии
+
+/** Читаемое объяснение отказа: что показать студенту и что нужно знать разработчику. */
+export function explainRejection(status, message) {
+  const m = (message || '').toLowerCase();
+  if (m.includes('location is not supported') || m.includes('user location')) {
+    return {
+      user: 'Чат недоступен: Google не обслуживает Gemini API из вашей страны.',
+      dev: 'Регион не поддерживается. Варианты: VPN на время разработки, другой провайдер модели или запрос через собственный бэкенд в поддерживаемом регионе.',
+    };
+  }
+  if (m.includes('api key not valid') || m.includes('api_key_invalid') || m.includes('invalid authentication')) {
+    return { user: 'Чат не отвечает: ключ доступа недействителен.', dev: 'Ключ неверный, отозван или удалён. Создайте новый в AI Studio.' };
+  }
+  if (m.includes('has not been used') || m.includes('is disabled') || m.includes('not enabled')) {
+    return { user: 'Чат не отвечает: доступ к Gemini API не включён.', dev: 'В проекте Google Cloud не включён Generative Language API. Включите его и подождите пару минут.' };
+  }
+  if (m.includes('expired')) {
+    return { user: 'Чат не отвечает: срок действия ключа истёк.', dev: 'Создайте новый ключ.' };
+  }
+  if (m.includes('consumer') || m.includes('billing')) {
+    return { user: 'Чат не отвечает: проблема с проектом Google Cloud.', dev: 'Проект отключён, удалён или требует включения биллинга.' };
+  }
+  if (status === 429) {
+    return { user: 'Сегодня чат недоступен — закончился дневной лимит запросов. Попробуйте завтра или напишите психологу через тест.', dev: 'Исчерпана квота бесплатного тарифа.' };
+  }
+  return { user: 'Чат не отвечает: похоже, ключ доступа неверный или не активирован.', dev: message || `HTTP ${status}` };
 }
 
 /**
@@ -101,26 +134,46 @@ export async function askAI(history, catalog) {
     },
   };
 
-  let res;
-  try {
-    res = await fetch(ENDPOINT(MODEL), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeader(KEY) },
-      body: JSON.stringify(body),
-    });
-  } catch {
-    return 'Связь пропала. Попробуйте отправить сообщение ещё раз.';
+  const order = working === null
+    ? AUTH_METHODS.map((_, i) => i)
+    : [working, ...AUTH_METHODS.map((_, i) => i).filter((i) => i !== working)];
+
+  let res = null;
+  let last = null;
+
+  for (const idx of order) {
+    const { url, headers } = AUTH_METHODS[idx].build(ENDPOINT(MODEL), KEY);
+    let r;
+    try {
+      r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      return 'Связь пропала. Попробуйте отправить сообщение ещё раз.';
+    }
+
+    if (r.ok) { working = idx; res = r; break; }
+
+    const err = await r.json().catch(() => ({}));
+    last = { status: r.status, message: err && err.error && err.error.message, method: AUTH_METHODS[idx].name };
+
+    // Только отказ по авторизации имеет смысл повторять другим способом
+    if (![400, 401, 403].includes(r.status)) break;
   }
 
-  if (!res.ok) {
-    // 429 — исчерпан бесплатный лимит; отдельная формулировка, чтобы было понятно, что делать
-    if (res.status === 429) {
-      return 'Сегодня чат недоступен — закончился дневной лимит запросов. Попробуйте завтра или напишите психологу через тест.';
-    }
-    if ([400, 401, 403].includes(res.status)) {
-      return 'Чат не отвечает: похоже, ключ доступа неверный или не активирован.';
-    }
-    return SOFT_FALLBACK;
+  if (!res) {
+    const { user, dev } = explainRejection(last && last.status, last && last.message);
+    // Подробности — в консоль браузера: студенту они не нужны, разработчику необходимы
+    console.warn(
+      '[MINDCARE] Gemini отклонил запрос.\n' +
+      `  HTTP: ${last && last.status}\n` +
+      `  Последний способ авторизации: ${last && last.method}\n` +
+      `  Ответ Google: ${(last && last.message) || '(пусто)'}\n` +
+      `  Что это значит: ${dev}`
+    );
+    return user;
   }
 
   let data;

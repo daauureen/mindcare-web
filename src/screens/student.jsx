@@ -60,7 +60,7 @@ export function Feed({ me, db, commit, tests, go }) {
         </div>
       </div>
       <div className="body stack">
-        <input placeholder="Поиск по названию" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input value={q} onChange={(e) => setQ(e.target.value)} />
         <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
           <button className={"chip" + (!cat ? " on" : "")} onClick={() => setCat(null)}>Все</button>
           {CATEGORIES.map((c) => (
@@ -405,7 +405,7 @@ export function AIChat({ me, db, commit, go, tests }) {
       <div style={{ padding: "10px 20px 14px", borderTop: "1px solid var(--line)", background: "var(--card)" }}>
         <div className="row">
           <input value={text} onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Напишите, что происходит" />
+            onKeyDown={(e) => e.key === "Enter" && send()} />
           <button className="btn sm" style={{ width: "auto" }} onClick={send} disabled={busy}>→</button>
         </div>
       </div>

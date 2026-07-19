@@ -1,0 +1,406 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+/* =========================================================================
+   MINDCARE — визуальная система
+
+   Ориентир: Headspace, Calm, Notion Mobile, Linear.
+   Правила, которых держимся везде:
+     · глубина создаётся тенью и слоями, а не рамками;
+     · бордеры почти прозрачные, только чтобы отделить светлое от светлого;
+     · радиусы крупные, отступы щедрые;
+     · цвет — пастель, акцент один (лаванда), остальное поддерживает;
+     · движение мягкое: 200–400 мс, ease-out, без резких отскоков.
+
+   Одно сознательное исключение: экран результата и кризисный экран
+   спокойнее остальных. Там ничего не «играет».
+   ========================================================================= */
+
+:root { color-scheme: light; }
+
+html, body { margin: 0; padding: 0; background: #FBF7F2; }
+
+.mc * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+.mc {
+  /* поверхности */
+  --cream: #FBF7F2;
+  --surface: #FFFFFF;
+  --surface-2: #F7F4FB;
+  --line: rgba(38, 33, 46, 0.07);
+  --line-soft: rgba(38, 33, 46, 0.06);
+
+  /* текст */
+  --ink: #26212E;
+  --ink-2: #4A4356;
+  --soft: #857D93;
+
+  /* акценты */
+  --lav: #8B7CF6;
+  --lav-deep: #6D5CE0;
+  --lav-soft: #F1EEFE;
+  --butter: #F5C26B;
+  --butter-soft: #FEF4E2;
+  --mint: #6FC9AE;
+  --mint-soft: #E4F6F0;
+  --rose: #EE8F84;
+  --rose-soft: #FDECE9;
+
+  /* совместимость: на эти имена ссылаются инлайн-стили экранов */
+  --paper: var(--cream);
+  --card: var(--surface);
+  --moss: var(--lav);
+  --mosslite: var(--lav-soft);
+  --ochre: #D9705F;
+  --ochrelite: var(--rose-soft);
+  --berry: var(--lav);
+  --berry-soft: var(--lav-soft);
+  --sun: var(--butter);
+  --sun-soft: var(--butter-soft);
+  --coral: var(--rose);
+  --coral-soft: var(--rose-soft);
+  --mint-soft: #E4F6F0;
+
+  --display: 'Manrope', system-ui, sans-serif;
+
+  /* тени: две — мягкая для карточек, направленная для акцентов */
+  --sh-1: 0 1px 2px rgba(38, 33, 46, .04), 0 6px 20px -12px rgba(38, 33, 46, .18);
+  --sh-2: 0 2px 4px rgba(38, 33, 46, .04), 0 14px 34px -16px rgba(38, 33, 46, .22);
+  --sh-lav: 0 8px 22px -10px rgba(109, 92, 224, .55);
+
+  --r-lg: 26px;
+  --r-md: 18px;
+  --r-sm: 13px;
+
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--cream);
+  min-height: 100dvh;
+  display: flex;
+  justify-content: center;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- каркас экрана ---------- */
+.mc .frame {
+  width: 100%; max-width: 460px; min-height: 100dvh;
+  display: flex; flex-direction: column; position: relative; z-index: 1;
+}
+.mc .body { flex: 1; padding: 16px 20px 40px; overflow-y: auto; scroll-behavior: smooth; }
+/* когда экран обёрнут в pull-to-refresh, скроллит внешний контейнер —
+   иначе получаются два вложенных скролла и жест не срабатывает */
+.mc .scroll { flex: 1; overflow-y: auto; display: flex; flex-direction: column; overscroll-behavior-y: contain; scroll-behavior: smooth; }
+.mc .scroll .body { overflow: visible; }
+
+/* ---------- живой фон ---------- */
+.mc .bg { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.mc .bg .blob { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .5; }
+
+/* ---------- типографика ---------- */
+.mc h1, .mc h2, .mc h3 {
+  font-family: var(--display); margin: 0; color: var(--ink);
+  letter-spacing: -0.022em; font-weight: 700;
+}
+.mc h1 { font-size: 29px; line-height: 1.18; }
+.mc h2 { font-size: 21px; line-height: 1.25; }
+.mc h3 { font-size: 16.5px; line-height: 1.3; font-weight: 700; }
+.mc p { margin: 0; line-height: 1.6; font-size: 15px; color: var(--ink-2); }
+.mc b { font-weight: 700; color: var(--ink); }
+.mc .eyebrow {
+  font-size: 11px; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--soft); font-weight: 700;
+}
+.mc .muted { color: var(--soft); font-size: 14.5px; line-height: 1.6; }
+.mc .tiny { font-size: 13px; color: var(--soft); line-height: 1.55; }
+
+/* ---------- шапка ---------- */
+.mc .top { display: flex; align-items: center; gap: 12px; padding: 20px 20px 4px; }
+.mc .back {
+  background: var(--surface); border: none; border-radius: 50%;
+  width: 38px; height: 38px; cursor: pointer; color: var(--ink);
+  box-shadow: var(--sh-1); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.mc .back:active { transform: scale(.93); }
+
+/* ---------- карточки ---------- */
+.mc .card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
+  padding: 20px; box-shadow: var(--sh-1);
+}
+.mc .card + .card { margin-top: 12px; }
+.mc button.card {
+  font-family: inherit; color: inherit; text-align: left; width: 100%;
+  transition: box-shadow .22s ease;
+}
+.mc button.card:hover { box-shadow: var(--sh-2); }
+.mc .card.alert { background: var(--rose-soft); border-color: transparent; }
+.mc .card.tinted { background: var(--lav-soft); border-color: transparent; box-shadow: none; }
+
+.mc .stack > * + * { margin-top: 14px; }
+.mc .row { display: flex; gap: 10px; align-items: center; }
+.mc .between { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.mc .divider { height: 1px; background: var(--line); margin: 20px 0; border: none; }
+
+/* ---------- кнопки ---------- */
+.mc button.btn {
+  width: 100%; padding: 16px 20px; border-radius: var(--r-md); border: none;
+  background: linear-gradient(135deg, #9C8DFA 0%, #7A6BF0 55%, #6D5CE0 100%);
+  color: #fff; font-family: var(--display); font-size: 15.5px; font-weight: 700;
+  letter-spacing: -0.01em; cursor: pointer; box-shadow: var(--sh-lav);
+  transition: box-shadow .22s ease, filter .22s ease, opacity .2s ease;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+.mc button.btn:hover:not(:disabled) { filter: brightness(1.05); box-shadow: 0 12px 28px -10px rgba(109, 92, 224, .65); }
+.mc button.btn:disabled { opacity: .42; cursor: not-allowed; box-shadow: none; filter: grayscale(.35); }
+.mc button.btn.ghost {
+  background: var(--surface); color: var(--lav-deep);
+  box-shadow: var(--sh-1); border: 1px solid var(--line);
+}
+.mc button.btn.ghost:hover:not(:disabled) { background: var(--lav-soft); box-shadow: var(--sh-2); }
+.mc button.btn.quiet {
+  background: transparent; color: var(--soft); box-shadow: none; border: 1px solid var(--line);
+}
+.mc button.btn.quiet:hover:not(:disabled) { background: var(--surface); color: var(--ink); }
+.mc button.btn.warn { background: linear-gradient(135deg, #F3A297, #DE7565); box-shadow: 0 8px 22px -10px rgba(222, 117, 101, .6); }
+.mc button.sm { padding: 10px 16px; width: auto; font-size: 14px; border-radius: var(--r-sm); }
+.mc button.link {
+  background: none; border: none; color: var(--lav-deep); font-family: inherit;
+  font-size: 14px; font-weight: 600; cursor: pointer; padding: 6px 2px;
+  transition: opacity .2s;
+}
+.mc button.link:hover { opacity: .7; }
+
+/* ---------- поля ввода с плавающей подписью ---------- */
+.mc .field { position: relative; }
+.mc .field .ctrl {
+  width: 100%; padding: 24px 16px 9px; border-radius: var(--r-md);
+  border: 1.5px solid transparent; background: var(--surface-2);
+  font-family: inherit; font-size: 15px; color: var(--ink);
+  transition: background .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.mc .field textarea.ctrl { min-height: 104px; resize: vertical; line-height: 1.55; }
+.mc .field .ctrl:focus {
+  outline: none; background: var(--surface);
+  border-color: var(--lav); box-shadow: 0 0 0 4px rgba(139, 124, 246, .14);
+}
+.mc .field .lbl {
+  position: absolute; left: 16px; top: 17px; font-size: 15px; color: var(--soft);
+  pointer-events: none; transform-origin: left top;
+  transition: transform .18s cubic-bezier(.4,0,.2,1), color .18s ease;
+}
+.mc .field.up .lbl { transform: translateY(-9px) scale(.72); color: var(--lav-deep); font-weight: 600; }
+.mc .field select.ctrl { appearance: none; cursor: pointer; background-image: none; }
+.mc .field .chev { position: absolute; right: 16px; top: 22px; color: var(--soft); pointer-events: none; }
+
+/* старые поля — на случай прямого использования input в экранах */
+.mc input:not(.ctrl), .mc textarea:not(.ctrl), .mc select:not(.ctrl) {
+  width: 100%; padding: 15px 16px; border-radius: var(--r-md);
+  border: 1.5px solid transparent; background: var(--surface-2);
+  font-family: inherit; font-size: 15px; color: var(--ink);
+  transition: background .2s, border-color .2s, box-shadow .2s;
+}
+.mc input:not(.ctrl):focus, .mc textarea:not(.ctrl):focus, .mc select:not(.ctrl):focus {
+  outline: none; background: var(--surface); border-color: var(--lav);
+  box-shadow: 0 0 0 4px rgba(139, 124, 246, .14);
+}
+.mc textarea:not(.ctrl) { min-height: 104px; resize: vertical; }
+.mc label.f > span { display: block; font-size: 12.5px; color: var(--soft); font-weight: 600; margin-bottom: 7px; }
+
+/* ---------- чипы и метки ---------- */
+.mc .chip {
+  display: inline-flex; align-items: center; padding: 9px 15px; border: 1px solid var(--line);
+  border-radius: 999px; font-size: 13.5px; font-weight: 600; background: var(--surface);
+  color: var(--ink-2); cursor: pointer; font-family: inherit;
+  transition: background .2s ease, color .2s ease, box-shadow .2s ease;
+}
+.mc .chip:hover { box-shadow: var(--sh-1); }
+.mc .chip.on { background: var(--ink); color: #fff; border-color: transparent; }
+.mc .tag {
+  display: inline-flex; align-items: center; padding: 6px 12px; font-size: 12px; font-weight: 600;
+  border-radius: 999px; background: var(--lav-soft); color: var(--lav-deep); border: none;
+}
+.mc .tag.warn { background: var(--butter-soft); color: #A9752B; }
+.mc .tag.grey { background: var(--surface-2); color: var(--soft); }
+
+/* ---------- варианты ответа ---------- */
+.mc .opt {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  padding: 17px 18px; border: 1.5px solid var(--line); border-radius: var(--r-md);
+  background: var(--surface); font-family: inherit; font-size: 15.5px; font-weight: 500;
+  cursor: pointer; color: var(--ink); box-shadow: var(--sh-1);
+  transition: border-color .2s ease, background .2s ease, box-shadow .2s ease;
+}
+.mc .opt + .opt { margin-top: 10px; }
+.mc .opt:hover { box-shadow: var(--sh-2); }
+.mc .opt.on { background: var(--lav-soft); border-color: var(--lav); box-shadow: 0 0 0 3px rgba(139,124,246,.12); }
+.mc .opt .radio {
+  width: 21px; height: 21px; border-radius: 50%; border: 2px solid var(--line);
+  flex-shrink: 0; display: grid; place-items: center; transition: border-color .2s;
+}
+.mc .opt.on .radio { border-color: var(--lav); }
+.mc .opt .radio i { width: 10px; height: 10px; border-radius: 50%; background: var(--lav); display: block; }
+
+/* ---------- нижняя навигация ---------- */
+.mc .nav {
+  position: sticky; bottom: 0; z-index: 20;
+  margin: 0 14px 14px; padding: 7px;
+  display: flex; gap: 2px;
+  background: rgba(255, 255, 255, .82);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--sh-2);
+}
+.mc .nav button {
+  position: relative; flex: 1; padding: 9px 2px 7px; background: none; border: none;
+  font-family: inherit; font-size: 10.5px; font-weight: 600; color: var(--soft);
+  cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  transition: color .22s ease;
+}
+.mc .nav button.on { color: var(--lav-deep); }
+.mc .nav .pill {
+  position: absolute; inset: 0; background: var(--lav-soft);
+  border-radius: 16px; z-index: -1;
+}
+.mc .nav .ico { position: relative; z-index: 1; display: block; }
+.mc .nav .cap { position: relative; z-index: 1; }
+
+/* ---------- прогресс ---------- */
+.mc .progress {
+  height: 8px; background: var(--surface-2); border-radius: 999px;
+  margin: 0 0 20px; overflow: hidden;
+}
+.mc .progress i {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, #A99BFB, #7A6BF0);
+}
+
+/* stepper */
+.mc .stepper { display: flex; align-items: center; gap: 8px; }
+.mc .stepper .dot {
+  height: 5px; flex: 1; border-radius: 999px; background: var(--surface-2);
+  overflow: hidden;
+}
+.mc .stepper .dot i { display: block; height: 100%; background: var(--lav); border-radius: 999px; }
+
+/* ---------- шкала результата: намеренно тихая ---------- */
+.mc .scale { margin: 20px 0 6px; }
+.mc .scale .bar {
+  display: flex; min-height: 52px; border-radius: var(--r-md);
+  overflow: hidden; background: var(--surface-2); gap: 2px; padding: 3px;
+}
+.mc .scale .seg {
+  flex: 1; display: flex; align-items: center; justify-content: center; border-radius: 13px;
+  font-size: 11.5px; font-weight: 600; color: var(--soft); background: transparent;
+  padding: 6px 5px; text-align: center; transition: background .3s ease, color .3s ease;
+}
+.mc .scale .seg.here { background: var(--surface); color: var(--ink); box-shadow: var(--sh-1); }
+.mc .scale .ends { display: flex; justify-content: space-between; margin-top: 10px; }
+
+/* ---------- чат ---------- */
+.mc .msg {
+  padding: 13px 16px; border-radius: 20px; max-width: 84%;
+  font-size: 15px; line-height: 1.55; white-space: pre-wrap;
+}
+.mc .msg.me {
+  background: linear-gradient(135deg, #9C8DFA, #7A6BF0); color: #fff;
+  margin-left: auto; border-bottom-right-radius: 7px; box-shadow: var(--sh-lav);
+}
+.mc .msg.ai { background: var(--surface); border-bottom-left-radius: 7px; box-shadow: var(--sh-1); color: var(--ink-2); }
+.mc .crisis { background: var(--rose-soft); border-radius: var(--r-lg); padding: 22px; }
+.mc .typing { display: inline-flex; gap: 4px; align-items: center; }
+.mc .typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--soft); display: block; }
+
+/* ---------- тост ---------- */
+.mc .toast {
+  position: fixed; bottom: 104px; left: 50%; z-index: 60;
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(38, 33, 46, .95); backdrop-filter: blur(10px);
+  color: #fff; padding: 13px 18px; border-radius: 16px;
+  font-size: 14px; font-weight: 500; max-width: 380px; box-shadow: var(--sh-2);
+}
+
+/* ---------- скелетоны ---------- */
+.mc .skel {
+  background: linear-gradient(90deg, var(--surface-2) 25%, #EFEBF6 37%, var(--surface-2) 63%);
+  background-size: 400% 100%; animation: shimmer 1.4s ease-in-out infinite; border-radius: 10px;
+}
+@keyframes shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+
+/* ---------- пустые состояния ---------- */
+.mc .empty { text-align: center; padding: 44px 24px; color: var(--soft); font-size: 14.5px; line-height: 1.6; }
+.mc .empty h3 { margin-bottom: 8px; }
+
+/* ---------- pull to refresh ---------- */
+.mc .ptr { display: flex; align-items: center; justify-content: center; overflow: hidden; color: var(--soft); }
+
+/* =========================================================================
+   АНАЛИТИКА
+   ========================================================================= */
+
+.mc .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.mc .kpi {
+  border-radius: 22px; padding: 18px; background: var(--surface);
+  border: 1px solid var(--line); box-shadow: var(--sh-1); position: relative; overflow: hidden;
+}
+.mc .kpi .ico-wrap {
+  width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; margin-bottom: 12px;
+}
+.mc .kpi.berry .ico-wrap { background: var(--lav-soft); color: var(--lav-deep); }
+.mc .kpi.mint .ico-wrap { background: var(--mint-soft); color: #3E9C82; }
+.mc .kpi.sun .ico-wrap { background: var(--butter-soft); color: #B0791F; }
+.mc .kpi.coral .ico-wrap { background: var(--rose-soft); color: #C4645A; }
+.mc .kpi-value {
+  font-family: var(--display); font-size: 30px; font-weight: 800;
+  line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
+}
+.mc .kpi-label { font-size: 13px; font-weight: 600; margin-top: 8px; color: var(--ink-2); }
+.mc .kpi-hint { font-size: 12px; color: var(--soft); margin-top: 4px; }
+
+.mc .funnel-row + .funnel-row { margin-top: 16px; }
+.mc .funnel-head { display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 600; margin-bottom: 7px; gap: 12px; color: var(--ink-2); }
+.mc .funnel-track { height: 12px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+.mc .funnel-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #A99BFB, #7A6BF0); }
+.mc .funnel-drop { font-size: 12px; color: var(--soft); margin-top: 5px; }
+.mc .funnel-drop.bad { color: var(--ochre); font-weight: 600; }
+
+.mc .legend { display: flex; gap: 16px; flex-wrap: wrap; margin: 14px 0 2px; }
+.mc .legend span { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--soft); font-weight: 500; }
+.mc .legend i { width: 9px; height: 9px; border-radius: 3px; }
+
+.mc .barsh-row { display: flex; align-items: center; gap: 12px; }
+.mc .barsh-row + .barsh-row { margin-top: 12px; }
+.mc .barsh-label { width: 36%; font-size: 13px; font-weight: 500; color: var(--ink-2); }
+.mc .barsh-track { flex: 1; height: 10px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+.mc .barsh-fill { height: 100%; border-radius: 999px; }
+.mc .barsh-row b { font-size: 13px; font-variant-numeric: tabular-nums; min-width: 26px; text-align: right; }
+
+.mc .donut-wrap { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.mc .donut-legend { flex: 1; min-width: 150px; }
+.mc .donut-legend > div { display: flex; align-items: center; gap: 10px; font-size: 13px; padding: 6px 0; color: var(--ink-2); }
+.mc .donut-legend i { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.mc .donut-legend span { flex: 1; }
+.mc .donut-legend b { font-variant-numeric: tabular-nums; }
+
+.mc .rings { display: flex; justify-content: space-around; gap: 12px; flex-wrap: wrap; }
+.mc .ring-item { text-align: center; }
+.mc .ring-cap { font-size: 12px; color: var(--soft); margin-top: 8px; font-weight: 500; }
+
+.mc .table-wrap { overflow-x: auto; }
+.mc .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.mc .tbl th {
+  text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--soft); padding: 0 8px 10px 0; font-weight: 700;
+}
+.mc .tbl td { padding: 12px 8px 12px 0; border-top: 1px solid var(--line); vertical-align: top; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.mc .tbl td.good { color: #3E9C82; font-weight: 700; }
+.mc .tbl td.bad { color: var(--ochre); font-weight: 700; }
+
+.mc .demo-toggle { display: flex; align-items: center; gap: 12px; width: 100%; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.mc .demo-toggle .sw { width: 42px; height: 25px; border-radius: 999px; background: var(--surface-2); position: relative; flex-shrink: 0; transition: background .25s; }
+.mc .demo-toggle.on .sw { background: var(--lav); }
+.mc .demo-toggle .knob { position: absolute; top: 3px; left: 3px; width: 19px; height: 19px; border-radius: 50%; background: #fff; box-shadow: var(--sh-1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .mc *, .mc *::before, .mc *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}

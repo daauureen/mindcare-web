@@ -1,9 +1,11 @@
+import { isSupabaseConfigured, getSupabaseClient, getSupabaseTableName } from './supabase.js';
+
 /**
  * Слой хранения данных.
  *
- * В прототипе всё лежит в localStorage браузера: своя база у каждого устройства,
- * данные не покидают компьютер. API оставлен асинхронным намеренно — когда появится
- * бэкенд, эти четыре функции заменяются на fetch к серверу, а экраны не меняются.
+ * По умолчанию приложение работает через localStorage. Если заданы
+ * VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY, данные сохраняются в Supabase
+ * и одновременно кэшируются в браузере как fallback.
  */
 
 const DB_KEY = 'mindcare:db:v2';
@@ -17,23 +19,81 @@ const write = (k, v) => {
   try { localStorage.setItem(k, v); return true; } catch (e) { console.error('storage', e); return false; }
 };
 
+async function saveToSupabase(key, value) {
+  const client = getSupabaseClient();
+  if (!client) return false;
+  const table = getSupabaseTableName();
+  try {
+    const payload = { key, value, updated_at: new Date().toISOString() };
+    const { error } = await client.from(table).upsert(payload, { onConflict: 'key' });
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('supabase save', error);
+    return false;
+  }
+}
+
+async function readFromSupabase(key) {
+  const client = getSupabaseClient();
+  if (!client) return null;
+  const table = getSupabaseTableName();
+  try {
+    const { data, error } = await client.from(table).select('value').eq('key', key).maybeSingle();
+    if (error) throw error;
+    return data ? data.value : null;
+  } catch (error) {
+    console.error('supabase load', error);
+    return null;
+  }
+}
+
 export async function loadDB() {
+  if (isSupabaseConfigured()) {
+    const remote = await readFromSupabase(DB_KEY);
+    if (remote != null) {
+      try { return typeof remote === 'string' ? JSON.parse(remote) : remote; } catch { return null; }
+    }
+  }
   const raw = read(DB_KEY);
   try { return raw ? JSON.parse(raw) : null; } catch { return null; }
 }
 
 export async function saveDB(db) {
-  return write(DB_KEY, JSON.stringify(db));
+  const serialized = JSON.stringify(db);
+  const localOk = write(DB_KEY, serialized);
+  if (isSupabaseConfigured()) {
+    const remoteOk = await saveToSupabase(DB_KEY, serialized);
+    return localOk || remoteOk;
+  }
+  return localOk;
 }
 
 export async function loadSession() {
+  if (isSupabaseConfigured()) {
+    const remote = await readFromSupabase(SESSION_KEY);
+    if (remote != null) {
+      try { return typeof remote === 'string' ? JSON.parse(remote) : remote; } catch { return null; }
+    }
+  }
   const raw = read(SESSION_KEY);
   try { return raw ? JSON.parse(raw) : null; } catch { return null; }
 }
 
 export async function saveSession(session) {
-  if (session) return write(SESSION_KEY, JSON.stringify(session));
+  const serialized = session ? JSON.stringify(session) : null;
+  if (session) {
+    const localOk = write(SESSION_KEY, serialized);
+    if (isSupabaseConfigured()) {
+      const remoteOk = await saveToSupabase(SESSION_KEY, serialized);
+      return localOk || remoteOk;
+    }
+    return localOk;
+  }
   try { localStorage.removeItem(SESSION_KEY); } catch (e) { console.error(e); }
+  if (isSupabaseConfigured()) {
+    await saveToSupabase(SESSION_KEY, null);
+  }
   return true;
 }
 

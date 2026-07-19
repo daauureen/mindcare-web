@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { loadDB, saveDB, loadSession, saveSession } from './lib/storage.js';
+import { loadDB, saveDB, saveSession } from './lib/storage.js';
 import { seedDB, withDemoData } from './lib/seed.js';
 import { probeSupabaseWrite } from './lib/supabase.js';
 import { seedSupabaseFromAppData } from './lib/supabaseSeed.js';
@@ -44,10 +44,10 @@ export default function App() {
         seeded = { ok: false, reason: 'seed_failed', error: error?.message || String(error) };
       }
       console.info('[supabase] seed', seeded);
-      const s = await loadSession();
       dbRef.current = d;
       setDb(d);
-      if (s && d.users.some((u) => u.id === s.userId)) { setSession(s); setRoute({ n: 'home' }); }
+      setSession(null);
+      setRoute({ n: 'welcome' });
     })();
   }, []);
 

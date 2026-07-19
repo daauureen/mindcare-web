@@ -32,13 +32,12 @@ export default function App() {
       let d = await loadDB();
       if (!d) {
         d = withDemoData(seedDB());
-        await saveDB(d);
-        const seeded = await seedSupabaseFromAppData();
-        console.info('[supabase] seed', seeded);
+      } else {
+        d = withDemoData({ ...d, users: d.users || [], tests: d.tests || [], attempts: d.attempts || [], events: d.events || [] });
       }
-      if (d && d.users && d.users.length) {
-        await saveDB(d);
-      }
+      await saveDB(d);
+      const seeded = await seedSupabaseFromAppData();
+      console.info('[supabase] seed', seeded);
       const s = await loadSession();
       dbRef.current = d;
       setDb(d);

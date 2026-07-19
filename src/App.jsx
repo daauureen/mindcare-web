@@ -36,6 +36,9 @@ export default function App() {
         const seeded = await seedSupabaseFromAppData();
         console.info('[supabase] seed', seeded);
       }
+      if (d && d.users && d.users.length) {
+        await saveDB(d);
+      }
       const s = await loadSession();
       dbRef.current = d;
       setDb(d);

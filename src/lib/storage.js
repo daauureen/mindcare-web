@@ -50,14 +50,20 @@ async function readFromSupabase(key) {
 }
 
 export async function loadDB() {
+  const raw = read(DB_KEY);
+  let localData = null;
+  try { localData = raw ? JSON.parse(raw) : null; } catch { localData = null; }
+
   if (isSupabaseConfigured()) {
     const remote = await readFromSupabase(DB_KEY);
     if (remote != null) {
-      try { return typeof remote === 'string' ? JSON.parse(remote) : remote; } catch { return null; }
+      try {
+        const parsedRemote = typeof remote === 'string' ? JSON.parse(remote) : remote;
+        if (parsedRemote && parsedRemote.users) return parsedRemote;
+      } catch { }
     }
   }
-  const raw = read(DB_KEY);
-  try { return raw ? JSON.parse(raw) : null; } catch { return null; }
+  return localData;
 }
 
 export async function saveDB(db) {

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { uid, nowISO, code6, CATEGORIES } from '../lib/utils.js';
 import { Field, Area, Top } from '../components/common.jsx';
 import { DocUploader } from '../components/documents.jsx';
 import { Item, Stagger, Btn, EASE } from '../components/motion.jsx';
 import { motion } from 'framer-motion';
 import { GraduationCap, HeartHandshake, ArrowRight, ShieldCheck, Mail } from 'lucide-react';
+import { sendEmailCode } from '../lib/email.js';
 
 // Экраны до входа в приложение: приветствие, вход, регистрация, подтверждение почты
 
@@ -12,38 +13,77 @@ export function VerifyEmail({ me, db, commit, logout, notify }) {
   const [code, setCode] = useState("");
   const [err, setErr] = useState("");
   const [tries, setTries] = useState(0);
+  const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  // При входе на экран — отправляем код
+  useEffect(() => {
+    sendEmailCode(me.email, me.emailCode);
+    setSent(true);
+  }, []);
 
   const confirm = () => {
     if (code.trim() !== me.emailCode) {
       setTries(tries + 1);
       return setErr(tries >= 3 ? "Код не совпадает. Запросите новый." : "Код не совпадает");
     }
-    commit({ ...db, users: db.users.map((u) => (u.id === me.id ? { ...u, emailVerifiedAt: nowISO(), emailCode: null } : u)) });
+    commit({
+      ...db,
+      users: db.users.map((u) =>
+        u.id === me.id ? { ...u, emailVerifiedAt: nowISO(), emailCode: null } : u
+      ),
+    });
     notify("Email подтверждён");
   };
 
-  const resend = () => {
+  const resend = async () => {
+    setSending(true);
     const c = code6();
-    commit({ ...db, users: db.users.map((u) => (u.id === me.id ? { ...u, emailCode: c } : u)) });
-    setErr(""); setTries(0);
-    notify("Новый код отправлен");
+    commit({
+      ...db,
+      users: db.users.map((u) => (u.id === me.id ? { ...u, emailCode: c } : u)),
+    });
+    await sendEmailCode(me.email, c);
+    setSending(false);
+    setErr("");
+    setTries(0);
+    notify("Новый код отправлен на почту");
   };
 
   return (
     <div className="body stack" style={{ display: "flex", flexDirection: "column", justifyContent: "center", minHeight: "100vh" }}>
       <div className="eyebrow">Шаг подтверждения</div>
       <h1>Подтвердите почту</h1>
-      <p className="muted">Мы отправили шестизначный код на {me.email}. Введите его, чтобы продолжить.</p>
-      <div className="card" style={{ background: "var(--mosslite)", borderColor: "var(--moss)" }}>
-        <div className="eyebrow">Прототип · письмо не уходит</div>
-        <p style={{ fontFamily: "var(--display)", fontSize: 30, letterSpacing: ".18em", marginTop: 6 }}>{me.emailCode}</p>
-        <p className="tiny">В рабочей версии код придёт письмом и здесь показываться не будет.</p>
-      </div>
-      <Field label="Код из письма" value={code} inputMode="numeric" maxLength={6}
-        onChange={(e) => { setCode(e.target.value); setErr(""); }} placeholder="000000" />
+      <p className="muted">
+        {sent 
+          ? `Мы отправили шестизначный код на ${me.email}. Введите его, чтобы продолжить.`
+          : `Код будет отправлен на ${me.email}`}
+      </p>
+
+      {/* Только для разработки показываем код */}
+      {!import.meta.env?.PROD && (
+        <div className="card" style={{ background: "var(--mosslite)", borderColor: "var(--moss)" }}>
+          <div className="eyebrow">Прототип · письмо не уходит</div>
+          <p style={{ fontFamily: "var(--display)", fontSize: 30, letterSpacing: ".18em", marginTop: 6 }}>{me.emailCode}</p>
+          <p className="tiny">В рабочей версии код придёт письмом и здесь показываться не будет.</p>
+        </div>
+      )}
+
+      <Field
+        label="Код из письма"
+        value={code}
+        inputMode="numeric"
+        maxLength={6}
+        onChange={(e) => { setCode(e.target.value); setErr(""); }}
+        placeholder="000000"
+      />
       {err && <p className="tiny" style={{ color: "var(--ochre)" }}>{err}</p>}
-      <button className="btn" disabled={code.trim().length !== 6} onClick={confirm}>Подтвердить</button>
-      <button className="link" style={{ width: "100%" }} onClick={resend}>Отправить код заново</button>
+      <button className="btn" disabled={code.trim().length !== 6} onClick={confirm}>
+        Подтвердить
+      </button>
+      <button className="link" style={{ width: "100%" }} onClick={resend} disabled={sending}>
+        {sending ? "Отправляю..." : "Отправить код заново"}
+      </button>
       <div className="divider" />
       <button className="btn quiet" onClick={logout}>Выйти</button>
     </div>

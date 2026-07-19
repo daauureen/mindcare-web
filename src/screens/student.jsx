@@ -331,7 +331,7 @@ export function PsychPublic({ db, id, go }) {
 }
 
 export function AIChat({ me, db, commit, go, tests }) {
-  const msgs = db.chats[me.id] || [];
+  const msgs = (db.chats && db.chats[me.id]) || [];
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [crisis, setCrisis] = useState(false);

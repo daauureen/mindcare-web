@@ -1,13 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { loadDB, saveDB, saveSession } from './lib/storage.js';
-
-function clearStaleSession() {
-  try {
-    localStorage.removeItem('mindcare:session:v2');
-  } catch (error) {
-    console.warn('[storage] failed to clear session', error);
-  }
-}
+import { loadDB, saveDB, saveSession, loadSession } from './lib/storage.js';
 import { seedDB, withDemoData } from './lib/seed.js';
 import { probeSupabaseWrite } from './lib/supabase.js';
 import { seedSupabaseFromAppData } from './lib/supabaseSeed.js';
@@ -17,20 +9,21 @@ import { PsychApp } from './screens/psychologist.jsx';
 import { AdminApp } from './screens/admin.jsx';
 import { Background, Toast, ScreenSkeleton, Page } from './components/motion.jsx';
 
-/**
- * Корневой компонент: хранит базу, сессию и маршрут, раздаёт их экранам по ролям.
- * Логика не изменилась — добавлены только оболочки представления:
- * фон, переходы между экранами, скелетон загрузки и pull-to-refresh.
- */
+function clearStaleSession() {
+  try {
+    localStorage.removeItem('mindcare:session:v2');
+  } catch (error) {
+    console.warn('[storage] failed to clear session', error);
+  }
+}
+
 export default function App() {
   const [db, setDb] = useState(null);
   const [session, setSession] = useState(null);
   const [route, setRoute] = useState({ n: 'welcome' });
   const [toast, setToast] = useState('');
+  const [loading, setLoading] = useState(true); // <-- флаг загрузки
 
-  // Актуальная база вне цикла рендера. Нужна там, где действие сразу после
-  // commit() читает данные: например, регистрация создаёт пользователя и тут же
-  // логинит его — из состояния его ещё не видно, из ref видно.
   const dbRef = useRef(null);
 
   useEffect(() => {
@@ -43,7 +36,14 @@ export default function App() {
       } else {
         d = withDemoData({ ...d, users: d.users || [], tests: d.tests || [], attempts: d.attempts || [], events: d.events || [] });
       }
+      
+      // Инициализируем недостающие поля
+      d.chats = d.chats || {};
+      d.notifications = d.notifications || [];
+      d.audit = d.audit || [];
+      
       await saveDB(d);
+      
       let seeded = { ok: false, reason: 'seed_skipped' };
       try {
         seeded = await seedSupabaseFromAppData();
@@ -52,11 +52,22 @@ export default function App() {
         seeded = { ok: false, reason: 'seed_failed', error: error?.message || String(error) };
       }
       console.info('[supabase] seed', seeded);
-      clearStaleSession();
+      
+      // Восстанавливаем сессию
+      const savedSession = await loadSession();
+      console.info('[session] restored', savedSession);
+      
       dbRef.current = d;
       setDb(d);
-      setSession(null);
-      setRoute({ n: 'welcome' });
+      setSession(savedSession); // <-- восстанавливаем сессию
+      setLoading(false);
+      
+      // Если есть сессия и пользователь, сразу на home
+      if (savedSession && savedSession.userId) {
+        setRoute({ n: 'home' });
+      } else {
+        setRoute({ n: 'welcome' });
+      }
     })();
   }, []);
 
@@ -72,16 +83,27 @@ export default function App() {
     if (!u) return 'Неверный email или пароль';
     if (u.status === 'BLOCKED') return 'Аккаунт заблокирован администратором';
     const s = { userId: u.id };
-    setSession(s); await saveSession(s); go('home');
+    setSession(s); 
+    await saveSession(s); // <-- сохраняем сессию
+    go('home');
     return null;
   };
-  const logout = async () => { setSession(null); await saveSession(null); go('welcome'); };
+  
+  const logout = async () => { 
+    setSession(null); 
+    await saveSession(null); // <-- удаляем сессию
+    go('welcome'); 
+  };
 
-  // Перечитывает базу с диска — полезно, когда приложение открыто в двух вкладках
   const refresh = useCallback(async () => {
     await new Promise((r) => setTimeout(r, 450));
     const d = await loadDB();
-    if (d) { dbRef.current = d; setDb(d); }
+    if (d) { 
+      d.chats = d.chats || {};
+      d.notifications = d.notifications || [];
+      dbRef.current = d; 
+      setDb(d); 
+    }
   }, []);
 
   const shell = (children) => (
@@ -91,7 +113,7 @@ export default function App() {
     </div>
   );
 
-  if (!db) return shell(<ScreenSkeleton />);
+  if (loading || !db) return shell(<ScreenSkeleton />);
 
   let screen;
   if (!me) {
@@ -106,8 +128,6 @@ export default function App() {
     screen = <StudentApp me={me} refresh={refresh} db={db} commit={commit} route={route} go={go} notify={notify} logout={logout} />;
   }
 
-  // Ключ перехода: смена роли или экрана перерисовывает содержимое с анимацией,
-  // но нижняя навигация внутри экранов остаётся на месте.
   const key = `${me ? me.role : 'guest'}:${route.n}:${route.id || ''}`;
 
   return shell(
